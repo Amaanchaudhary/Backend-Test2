@@ -20,6 +20,6 @@ app.get("/" , (req , res) => {
 app.use("/api/v1" , router);
 
 app.listen(8001 , () => console.log("App is running on 8001"));
-mongoose.connect(process.env.MONGOURL).then(() => console.log("Database Connected"));
+mongoose.connect(process.env.MONGOURL).then(() => console.log("Database Connected"));  
 
 
