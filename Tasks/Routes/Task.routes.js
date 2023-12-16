@@ -8,6 +8,6 @@ router.post("/assign", checkadmin ,Assign);
 router.get("/update", checkadmin , update);
 router.get("/fetch", fetch);
 router.get("/task-completed", taskCompleted);
-router.get("/fetch-and-sort", FetchAndSort);
+router.get("/fetch-and-sort", checkadmin , FetchAndSort);
 
 export default router;

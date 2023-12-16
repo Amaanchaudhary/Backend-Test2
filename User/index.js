@@ -4,7 +4,7 @@ import morgan from 'morgan';
 import mongoose from "mongoose";
 import cors from 'cors';
 import router from "./Routes/index.js";
-// import connect from 'nats'
+import {connect} from 'nats'
 
 const app = express();
 dotenv.config();
@@ -13,38 +13,37 @@ app.use(cors());
 app.use(morgan('dev'))
 app.use(express.json());
 
-// let natsConnection;
 
-// const natsOptions = {
-//     servers : ['nats://localhost:4222'],
-// };
-
-// const publishEvent = async (subject , data) => {
-//     if(!natsConnection){
-//         natsConnection = await connect(natsOptions);
-//         console.log("Connected to nats server");
-//     }
-//     try{
-//         natsConnection.publish(subject , data);
-//         console.log("Event publish successfully");
-//         await natsConnection.flush();
-//     }catch(error){
-//         console.log("Error publish event:" , error)
-//     }
-// }
-
-// app.get("/hello", async (req, res) => {
-//     const CompletedTask = {
-//         EventName : "Assignment"
-//     }
-//     try{
-//         await publishEvent(TASK_COMPLETED , JSON.stringify(CompletedTask))
-//     }catch(error){
-//         console.error("Error publish event :" , error)
-//     }
-//     res.send(true);  
-// })
-
+const natsOptions = {
+    servers: ['nats://localhost:4222'],
+  };
+  
+  const handleTaskCompletedEvent = (msg) => {
+    const eventData = JSON.parse(msg.data);
+    console.log(`User ${eventData.EventName}`);
+  };
+  
+  const subscribeToTaskCompletedEvent = async () => {
+    try { 
+      const nc = await connect(natsOptions); 
+      console.log('Connected to NATS server.');
+      const subscription = nc.subscribe('TASK_COMPLETED', (err, msg) => {
+        try {
+          handleTaskCompletedEvent(msg);
+          console.log('Received TASK_COMPLETED event');
+        } catch (error) {
+          console.error('Error handling TASK_COMPLETED event:', error);
+        }
+      });
+      // subscription.unsubscribe();
+    } catch (error) {
+      console.error('Error connecting to NATS server:', error);
+    }
+  };
+  
+  subscribeToTaskCompletedEvent().catch((err) => {
+    console.error('Error:', err.message);
+  });
 
 
 app.get("/" , (req , res) => {

@@ -1,14 +1,49 @@
 import TaskModals from '../Modals/Task.modals.js'
 
-export const Assign = async (req , res ) => {
-    try{
-        const {description , priority , dueDate , completed , userID} = req.body
-        // console.log(dueDate);
-        if(!description || !priority || !dueDate || !completed || !userID) return res.status(401).json({success : false , message : "All Fields are Mandatory"}) 
+import {connect} from 'nats'
 
-        const task  = new TaskModals({
+const natsOptions = {
+    servers: ['nats://localhost:4222'],
+};
+
+let natsConnection;
+
+const publishEvent = async (subject, data) => {
+    if (!natsConnection) {
+        natsConnection = await connect(natsOptions);
+        console.log("Connected to nats server");
+    }
+    try {
+        natsConnection.publish(subject, data);
+        console.log("Event publish successfully");
+        await natsConnection.flush(); 
+    } catch (error) {
+        console.log("Error publish event:", error)
+    }
+}
+
+
+// app.get("/hello", async (req, res) => {
+// const CompletedTask = {
+//     EventName : "Assignment"
+// }
+// try{
+//     await publishEvent('TASK_COMPLETED' , JSON.stringify(CompletedTask))
+// }catch(error){
+//     console.error("Error publish event :" , error)
+// }
+// res.send(true);  
+// })
+
+export const Assign = async (req, res) => {
+    try {
+        const { description, priority, dueDate, completed, userID } = req.body
+        // console.log(dueDate);
+        if (!description || !priority || !dueDate || !userID) return res.status(401).json({ success: false, message: "All Fields are Mandatory" })
+
+        const task = new TaskModals({
             description,
-            priority,   
+            priority,
             dueDate,
             completed,
             userID
@@ -16,82 +51,88 @@ export const Assign = async (req , res ) => {
 
         await task.save();
 
-        return res.status(200).json({success : true , message : "Task Assigned Successfully"})
+        return res.status(200).json({ success: true, message: "Task Assigned Successfully" })
 
-    }catch(error){
+    } catch (error) {
         console.log(error)
         return res.status(500).json({ success: false, message: error.message })
     }
 }
 
-export const update = async (req , res ) => {
-    try{
-        const {taskID ,description , priority , dueDate , completed , userID} = req.body
+export const update = async (req, res) => {
+    try {
+        const { taskID, description, priority, dueDate, completed, userID } = req.body
         // console.log(req.body);
-        if(!taskID ||!description || !priority || !dueDate || !completed || !userID) return res.status(401).json({success : false , message : "All Fields are Mandatory"}) 
+        if (!taskID || !description || !priority || !dueDate || !completed || !userID) return res.status(401).json({ success: false, message: "All Fields are Mandatory" })
 
-        const updatedData = await TaskModals.findByIdAndUpdate(taskID , {description , priority , dueDate , completed , userID})
+        const updatedData = await TaskModals.findByIdAndUpdate(taskID, { description, priority, dueDate, completed, userID })
 
-        if(!updatedData) return res.status(401).json({success : false , message : "Check the data you send"}) 
+        if (!updatedData) return res.status(401).json({ success: false, message: "Check the data you send" })
 
-        return res.status(200).json({success : true , message : "Task Updated Successfully"})
+        return res.status(200).json({ success: true, message: "Task Updated Successfully" })
 
-    }catch(error){
+    } catch (error) {
         console.log(error)
         return res.status(500).json({ success: false, message: error.message })
     }
 }
 
-export const fetch = async (req , res ) => {
-    try{
-        const {userID} = req.body
+export const fetch = async (req, res) => {
+    try {
+        const { userID } = req.body
         // console.log(req.body);
-        if(!userID) return res.status(401).json({success : false , message : "All Fields are Mandatory"}) 
+        if (!userID) return res.status(401).json({ success: false, message: "All Fields are Mandatory" })
 
-        const task = await TaskModals.find({userID})
+        const task = await TaskModals.find({ userID })
 
-        if(!task) return res.status(401).json({success : false , message : "Check the data you send"}) 
+        if (!task) return res.status(401).json({ success: false, message: "Check the data you send" })
 
-        return res.status(200).json({success : true , message : "Tasks Fetched Successfully" , task})
+        return res.status(200).json({ success: true, message: "Tasks Fetched Successfully", task })
 
-    }catch(error){
+    } catch (error) {
         console.log(error)
-        return res.status(500).json({ success: false, message: error.message }) 
+        return res.status(500).json({ success: false, message: error.message })
     }
 }
 
-export const taskCompleted = async (req , res ) => {
-    try{
-        const {taskID} = req.body
+export const taskCompleted = async (req, res) => {
+    try {
+        const { taskID } = req.body
         // console.log(req.body);
-        if(!taskID) return res.status(401).json({success : false , message : "Task ID is Mandatory"}) 
+        if (!taskID) return res.status(401).json({ success: false, message: "Task ID is Mandatory" })
 
-        const completedTask = await TaskModals.findByIdAndUpdate(taskID , {completed : true})
+        const completedTask = await TaskModals.findByIdAndUpdate(taskID, { completed: true })
 
-        if(!completedTask) return res.status(401).json({success : false , message : "Check the data you send"}) 
+        if (!completedTask) return res.status(401).json({ success: false, message: "Check the data you send" })
+        
+        const CompletedTask = {
+            EventName: "Assignment"
+        }
 
-        return res.status(200).json({success : true , message : `Task ${taskID} Marked as Completed Successfully`})
+        await publishEvent('TASK_COMPLETED', JSON.stringify(CompletedTask))
 
-    }catch(error){
+        return res.status(200).json({ success: true, message: `Task ${taskID} Marked as Completed Successfully` , completedTask })
+
+    } catch (error) {
         console.log(error)
         return res.status(500).json({ success: false, message: error.message })
     }
 }
 
 
-export const FetchAndSort = async (req , res ) => {
-    try{
-        const {completed , priority , dueDate  } = req.body
+export const FetchAndSort = async (req, res) => {
+    try {
+        const { completed, priority, dueDate } = req.body
         // console.log(completed);
-        if(!completed || !priority || !dueDate ) return res.status(401).json({success : false , message : "All Fields are Mandatory"}) 
+        if (!completed || !priority || !dueDate) return res.status(401).json({ success: false, message: "All Fields are Mandatory" })
 
-        const task = await TaskModals.find({completed , priority }).sort({dueDate})
+        const task = await TaskModals.find({ completed, priority }).sort({ dueDate })
 
-        if(!task) return res.status(401).json({success : false , message : "Check the data you send"}) 
+        if (!task) return res.status(401).json({ success: false, message: "Check the data you send" })
         console.log(task)
-        return res.status(200).json({success : true , message : "Tasks Fetched Successfully" , task})
+        return res.status(200).json({ success: true, message: "Tasks Fetched Successfully", task })
 
-    }catch(error){
+    } catch (error) {
         console.log(error)
         return res.status(500).json({ success: false, message: error.message })
     }
